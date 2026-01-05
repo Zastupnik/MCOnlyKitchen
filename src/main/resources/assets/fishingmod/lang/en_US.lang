@@ -1,0 +1,8 @@
+item.fishingRod.name=Fishing Rod
+item.netherFishingRod.name=Nether Fishing Rod
+
+gui.fishing.hit=HIT!
+gui.fishing.perfect=PERFECT!
+gui.fishing.escape=The fish escaped...
+gui.fishing.chest=You found a chest!
+gui.fishing.chest_golden=You found a golden chest!

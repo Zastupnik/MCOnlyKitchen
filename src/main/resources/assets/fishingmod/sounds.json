@@ -1,0 +1,10 @@
+{
+  "fishingmod:reel_fast": { "category": "player", "sounds": [ "reel_fast.ogg" ] },
+  "fishingmod:reel_slow": { "category": "player", "sounds": [ "reel_slow.ogg" ] },
+  "fishingmod:reel_creak": { "category": "player", "sounds": [ "reel_creak.ogg" ] },
+  "fishingmod:hit": { "category": "player", "sounds": [ "hit.ogg" ] },
+  "fishingmod:perfect": { "category": "player", "sounds": [ "perfect.ogg" ] },
+  "fishingmod:fish_escape": { "category": "player", "sounds": [ "escape.ogg" ] },
+  "fishingmod:open_chest": { "category": "player", "sounds": [ "open_chest.ogg" ] },
+  "fishingmod:open_chest_golden": { "category": "player", "sounds": [ "open_chest_golden.ogg" ] }
+}

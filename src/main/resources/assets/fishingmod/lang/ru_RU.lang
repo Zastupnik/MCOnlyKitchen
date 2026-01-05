@@ -1,0 +1,8 @@
+item.fishingRod.name=Удочка
+item.netherFishingRod.name=Адская удочка
+
+gui.fishing.hit=УДАР!
+gui.fishing.perfect=ИДЕАЛЬНО!
+gui.fishing.escape=Рыба сорвалась...
+gui.fishing.chest=Ты нашёл сундук!
+gui.fishing.chest_golden=Ты нашёл золотой сундук!
