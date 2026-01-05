@@ -1,0 +1,34 @@
+{
+  "reel_fast": {
+    "category": "player",
+    "sounds": ["mconlykitchen:reel_fast"]
+  },
+  "reel_slow": {
+    "category": "player",
+    "sounds": ["mconlykitchen:reel_slow"]
+  },
+  "reel_creak": {
+    "category": "player",
+    "sounds": ["mconlykitchen:reel_creak"]
+  },
+  "complete": {
+    "category": "player",
+    "sounds": ["mconlykitchen:complete"]
+  },
+  "fish_escape": {
+    "category": "player",
+    "sounds": ["mconlykitchen:fish_escape"]
+  },
+  "chest_get": {
+    "category": "player",
+    "sounds": ["mconlykitchen:chest_get"]
+  },
+  "open_chest": {
+    "category": "player",
+    "sounds": ["mconlykitchen:open_chest"]
+  },
+  "open_chest_golden": {
+    "category": "player",
+    "sounds": ["mconlykitchen:open_chest_golden"]
+  }
+}
