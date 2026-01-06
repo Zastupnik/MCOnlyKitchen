@@ -7,20 +7,14 @@ import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
 
-/**
- * Пакет для открытия GUI мини-игры рыбалки: сервер → клиент
- * НЕ содержит информацию о награде (защита от читеров)
- */
 public class PacketOpenFishingGUI implements IMessage {
-
-    private int rodTier;
-    private boolean isLava;
-    private int fishTier;
-    private int bobberEntityId; // теперь нужен
+    public int rodTier;
+    public boolean isLava;
+    public int fishTier;
+    public int bobberEntityId;
 
     public PacketOpenFishingGUI() {}
 
-    /** Конструктор пакета (только визуальная информация) */
     public PacketOpenFishingGUI(int rodTier, boolean isLava, int fishTier, int bobberEntityId) {
         this.rodTier = rodTier;
         this.isLava = isLava;
@@ -30,32 +24,29 @@ public class PacketOpenFishingGUI implements IMessage {
 
     @Override
     public void fromBytes(ByteBuf buf) {
-        rodTier = buf.readInt();
-        isLava = buf.readBoolean();
-        fishTier = buf.readInt();
-        bobberEntityId = buf.readInt(); // читаем четвертый
+        this.rodTier = buf.readInt();
+        this.isLava = buf.readBoolean();
+        this.fishTier = buf.readInt();
+        this.bobberEntityId = buf.readInt();
     }
 
     @Override
     public void toBytes(ByteBuf buf) {
-        buf.writeInt(rodTier);
-        buf.writeBoolean(isLava);
-        buf.writeInt(fishTier);
-        buf.writeInt(bobberEntityId); // пишем четвертый
+        buf.writeInt(this.rodTier);
+        buf.writeBoolean(this.isLava);
+        buf.writeInt(this.fishTier);
+        buf.writeInt(this.bobberEntityId);
     }
 
     public static class Handler implements IMessageHandler<PacketOpenFishingGUI, IMessage> {
         @Override
-        public IMessage onMessage(final PacketOpenFishingGUI message, MessageContext ctx) {
-            // В 1.7.10 можно напрямую вызвать на клиенте
-            Minecraft.getMinecraft().displayGuiScreen(
-                    new GuiFishingMiniGame(
-                            message.rodTier,
-                            message.isLava,
-                            message.fishTier,
-                            message.bobberEntityId
-                    )
-            );
+        public IMessage onMessage(final PacketOpenFishingGUI msg, final MessageContext ctx) {
+            if (ctx.side.isClient()) {
+                Minecraft mc = Minecraft.getMinecraft();
+                mc.displayGuiScreen(new GuiFishingMiniGame(
+                        msg.rodTier, msg.isLava, msg.fishTier, msg.bobberEntityId
+                ));
+            }
             return null;
         }
     }

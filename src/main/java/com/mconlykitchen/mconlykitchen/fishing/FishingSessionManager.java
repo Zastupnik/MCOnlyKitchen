@@ -8,14 +8,20 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.UUID;
 
 public class FishingSessionManager {
 
+    // Одна активная сессия на игрока (по UUID)
     private static final Map<UUID, FishingSession> sessions = new HashMap<UUID, FishingSession>();
-    private static final long SESSION_TIMEOUT = 60000L; // 60 сек
-    private static final Random RAND = new Random();
 
+    // Таймаут «висящей» сессии, если клиент не завершил мини‑игру
+    private static final long SESSION_TIMEOUT = 60000L; // 60 сек
+
+    // Удаление просроченных сессий (зови периодически с сервера)
     public static void removeExpiredSessions() {
         Iterator<Map.Entry<UUID, FishingSession>> it = sessions.entrySet().iterator();
         while (it.hasNext()) {
@@ -26,75 +32,60 @@ public class FishingSessionManager {
         }
     }
 
-    public static void startSession(EntityPlayerMP player, int rodTier, boolean isLava, int fishTier) {
-        UUID id = player.getUniqueID();
-
-        FishingSession existing = sessions.get(id);
-        if (existing != null && !existing.isExpired()) {
-            // уже идёт мини‑игра — не создаём новую
-            return;
+    public static void startSession(net.minecraft.entity.player.EntityPlayerMP player, int rodTier, boolean isLava, int fishTier) {
+        java.util.UUID id = player.getUniqueID();
+        FishingSession prev = sessions.remove(id);
+        if (prev != null) {
+            // закрываем старую сессию без награды
         }
-
         sessions.put(id, new FishingSession(player, rodTier, isLava, fishTier));
     }
 
-
-
-    public static boolean finishSession(EntityPlayerMP player, boolean success, boolean gotChest, boolean isGoldenChest) {
-        UUID id = player.getUniqueID();
-        FishingSession session = sessions.get(id);
-        if (session == null || session.isExpired() || !session.getPlayer().equals(player)) {
-            sessions.remove(id);
+    public static boolean finishSession(net.minecraft.entity.player.EntityPlayerMP player, boolean success, boolean gotChest, boolean isGoldenChest) {
+        java.util.UUID id = player.getUniqueID();
+        FishingSession session = sessions.remove(id);
+        if (session == null || session.isExpired() || session.getPlayer() != player) {
             return false;
         }
 
-        sessions.remove(id);
+        long nowTicks = player.worldObj.getTotalWorldTime();
+        player.getEntityData().setLong("FishingPostLockUntil", nowTicks + 40L);
 
-        // КОРОТКИЙ ПОСТ-ЛОК: закрываем гонку между сервером и GUI
-        long now = player.worldObj.getTotalWorldTime();
-        long postLockTicks = 40L; // ~2 секунды
-        player.getEntityData().setLong("FishingPostLockUntil", now + postLockTicks);
+        if (!success) return true;
 
-        if (!success) {
-            return true;
-        }
-
-        // Анти‑рывок
-        player.motionX = 0.0D;
-        player.motionY = 0.0D;
-        player.motionZ = 0.0D;
+        player.motionX = player.motionY = player.motionZ = 0.0D;
         player.velocityChanged = true;
 
-        // Рыба
-        ItemStack fish = FishingLootHelper.getFishLoot(session.isLava(), session.getFishTier());
+        net.minecraft.item.ItemStack fish = com.mconlykitchen.mconlykitchen.util.FishingLootHelper.getFishLoot(session.isLava(), session.getFishTier());
         if (fish != null && fish.getItem() != null) {
             giveRewardToPlayer(player, fish);
         }
 
-        // Сундук
         if (gotChest) {
-            ItemStack chestLoot = isGoldenChest ? ModConfig.getGoldenChestLoot() : ModConfig.getNormalChestLoot();
+            net.minecraft.item.ItemStack chestLoot = isGoldenChest
+                    ? com.mconlykitchen.mconlykitchen.config.ModConfig.getGoldenChestLoot()
+                    : com.mconlykitchen.mconlykitchen.config.ModConfig.getNormalChestLoot();
             if (chestLoot != null && chestLoot.getItem() != null) {
                 giveRewardToPlayer(player, chestLoot);
-                player.getEntityData().setTag("LastChestLoot", chestLoot.writeToNBT(new NBTTagCompound()));
+                player.getEntityData().setTag("LastChestLoot", chestLoot.writeToNBT(new net.minecraft.nbt.NBTTagCompound()));
             }
         }
-
         return true;
     }
 
 
 
-
+    // Есть ли активная сессия у игрока
     public static boolean hasSession(EntityPlayerMP player) {
         return sessions.containsKey(player.getUniqueID());
     }
 
+    // Сбросить сессию вручную (если требуется)
     public static void clearSession(EntityPlayerMP player) {
-        UUID id = player.getUniqueID();
-        sessions.remove(id);
+        sessions.remove(player.getUniqueID());
     }
 
+    // Выдача награды игроку (инвентарь или дроп)
     private static void giveRewardToPlayer(EntityPlayerMP player, ItemStack loot) {
         ItemStack stack = loot.copy();
         if (!player.inventory.addItemStackToInventory(stack)) {
@@ -105,31 +96,36 @@ public class FishingSessionManager {
         }
         player.inventoryContainer.detectAndSendChanges();
 
+        // Износ текущей удочки
         ItemStack heldItem = player.getHeldItem();
         if (heldItem != null && heldItem.getItem() != null) {
             heldItem.damageItem(1, player);
         }
     }
 
+    // Данные одной сессии
     private static class FishingSession {
         private final EntityPlayerMP player;
         private final int rodTier;
         private final boolean isLava;
         private final int fishTier;
-        private final long startTime;
+        private final long startMillis;
 
         public FishingSession(EntityPlayerMP player, int rodTier, boolean isLava, int fishTier) {
             this.player = player;
             this.rodTier = rodTier;
             this.isLava = isLava;
             this.fishTier = fishTier;
-            this.startTime = System.currentTimeMillis();
+            this.startMillis = System.currentTimeMillis();
         }
 
         public EntityPlayerMP getPlayer() { return player; }
         public int getRodTier() { return rodTier; }
         public boolean isLava() { return isLava; }
         public int getFishTier() { return fishTier; }
-        public boolean isExpired() { return System.currentTimeMillis() - startTime > SESSION_TIMEOUT; }
+
+        public boolean isExpired() {
+            return System.currentTimeMillis() - startMillis > SESSION_TIMEOUT;
+        }
     }
 }

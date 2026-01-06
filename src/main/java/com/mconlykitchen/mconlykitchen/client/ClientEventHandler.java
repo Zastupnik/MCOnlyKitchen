@@ -1,29 +1,64 @@
 package com.mconlykitchen.mconlykitchen.client;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
-
 @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
 public class ClientEventHandler {
 
-    private final Minecraft mc = Minecraft.getMinecraft();
+    private static boolean openFishingGuiScheduled = false;
+    private static int scheduledRodTier = 0;
+    private static boolean scheduledIsLava = false;
+    private static int scheduledFishTier = 0;
+    private static int scheduledBobberEntityId = -1;
 
-    /** Тик клиента — обновляем анимацию */
-    @SubscribeEvent
-    public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (mc.theWorld == null || mc.thePlayer == null) return;
+    private static int jumpCooldownTicks = 0;
 
-        BiteAnimationHandler.tick();
+    public static void scheduleOpenFishingGui(int rodTier, boolean isLava, int fishTier, int bobberEntityId) {
+        scheduledRodTier = rodTier;
+        scheduledIsLava = isLava;
+        scheduledFishTier = fishTier;
+        scheduledBobberEntityId = bobberEntityId;
+        openFishingGuiScheduled = true;
     }
 
-    /** Рендер HUD — иконка пробела */
+    public static void applyJumpCooldown(int ticks) {
+        if (ticks > jumpCooldownTicks) jumpCooldownTicks = ticks;
+    }
+
+    @cpw.mods.fml.common.eventhandler.SubscribeEvent
+    public void onClientTick(cpw.mods.fml.common.gameevent.TickEvent.ClientTickEvent event) {
+        if (event.phase != cpw.mods.fml.common.gameevent.TickEvent.Phase.END) return;
+
+        final net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+        if (mc.theWorld == null || mc.thePlayer == null) return;
+
+        com.mconlykitchen.mconlykitchen.client.BiteAnimationHandler.tick();
+
+        if (jumpCooldownTicks > 0) {
+            net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), false);
+            jumpCooldownTicks--;
+        }
+
+        if (openFishingGuiScheduled) {
+            openFishingGuiScheduled = false;
+            if (!(mc.currentScreen instanceof com.mconlykitchen.mconlykitchen.gui.GuiFishingMiniGame)) {
+                mc.displayGuiScreen(new com.mconlykitchen.mconlykitchen.gui.GuiFishingMiniGame(
+                        scheduledRodTier, scheduledIsLava, scheduledFishTier, scheduledBobberEntityId
+                ));
+            }
+            com.mconlykitchen.mconlykitchen.client.BiteAnimationHandler.reset();
+        }
+    }
+
+
+
+
     @SubscribeEvent
-    public void onRenderGameOverlay(RenderGameOverlayEvent.Post event) {
-        if (event.type != RenderGameOverlayEvent.ElementType.ALL) return;
+    public void onRenderGameOverlay(net.minecraftforge.client.event.RenderGameOverlayEvent.Post event) {
+        if (event.type != net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.ALL) return;
+
+        final Minecraft mc = Minecraft.getMinecraft();
         if (!BiteAnimationHandler.isAnimating()) return;
 
         ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);

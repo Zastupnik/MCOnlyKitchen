@@ -13,6 +13,7 @@ public class ModEvents {
         // Регистрация обработчиков событий
         FMLCommonHandler.instance().bus().register(events);
         MinecraftForge.EVENT_BUS.register(events);
+
     }
 
     // Пример: можно добавить события для отслеживания рыбалки

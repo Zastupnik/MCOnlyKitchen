@@ -101,7 +101,11 @@ public class BiteAnimationHandler {
             NetworkHandler.INSTANCE.sendToServer(new PacketSpacePressed(bobberEntityId));
 
             // Открываем GUI мини-игры
-            mc.displayGuiScreen(new GuiFishingMiniGame(rodTier, isLava, fishTier, bobberEntityId));
+            com.mconlykitchen.mconlykitchen.client.ClientEventHandler.scheduleOpenFishingGui(
+                    rodTier, isLava, fishTier, bobberEntityId
+            );
+            reset();
+
 
             // Полный сброс анимации
             isAnimating = false;
@@ -142,7 +146,11 @@ public class BiteAnimationHandler {
             NetworkHandler.INSTANCE.sendToServer(new PacketSpacePressed(bobberEntityId));
 
             // Открываем GUI мини-игры
-            mc.displayGuiScreen(new GuiFishingMiniGame(rodTier, isLava, fishTier, bobberEntityId));
+            com.mconlykitchen.mconlykitchen.client.ClientEventHandler.scheduleOpenFishingGui(
+                    rodTier, isLava, fishTier, bobberEntityId
+            );
+            reset();
+
 
             // Полный сброс анимации
             isAnimating = false;
@@ -155,6 +163,13 @@ public class BiteAnimationHandler {
         if (waitingForPress && Keyboard.isKeyDown(Keyboard.KEY_ESCAPE)) {
             waitingForPress = false;
         }
+    }
+    public static void reset() {
+        isAnimating = false;
+        waitingForPress = false;
+        spacePressed = false;
+        animationTick = 0;
+        waitTicks = 0;
     }
 
     /** Проверка, активна ли анимация */

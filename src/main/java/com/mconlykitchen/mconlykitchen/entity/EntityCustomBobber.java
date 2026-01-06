@@ -2,6 +2,7 @@ package com.mconlykitchen.mconlykitchen.entity;
 
 import com.mconlykitchen.mconlykitchen.config.ModConfig;
 import com.mconlykitchen.mconlykitchen.network.NetworkHandler;
+import com.mconlykitchen.mconlykitchen.network.PacketOpenFishingGUI;
 import com.mconlykitchen.mconlykitchen.network.PacketShowBiteAnimation;
 import com.mconlykitchen.mconlykitchen.util.FishTierSystem;
 import net.minecraft.block.Block;
@@ -17,8 +18,10 @@ import net.minecraft.world.World;
 
 public class EntityCustomBobber extends Entity {
 
-    private EntityPlayer owner;
-    private int rodTier; // теперь это сырой tier 0..6
+    /** Владелец поплавка */
+    private final EntityPlayer owner;
+    /** Тир удочки (0..6) */
+    private final int rodTier;
 
     // Физика
     private double motionX;
@@ -35,13 +38,17 @@ public class EntityCustomBobber extends Entity {
 
     public EntityCustomBobber(World world) {
         super(world);
+        this.owner = null;
+        this.rodTier = 0;
         this.setSize(0.25F, 0.25F);
     }
 
     public EntityCustomBobber(World world, EntityPlayer player, int tier) {
-        this(world);
+        super(world);
+        this.setSize(0.25F, 0.25F);
+
         this.owner = player;
-        this.rodTier = (tier < 0 ? 0 : tier > 6 ? 6 : tier); // сохраняем сырой tier 0..6
+        this.rodTier = (tier < 0 ? 0 : tier > 6 ? 6 : tier);
 
         this.setLocationAndAngles(
                 player.posX,
@@ -134,41 +141,39 @@ public class EntityCustomBobber extends Entity {
         boolean inWater = material == Material.water;
         boolean inLava  = material == Material.lava;
 
-        // Поплавок работает только в воде или лаве
         if ((inWater || inLava) && !worldObj.isRemote) {
             ticksInWater++;
 
-            // Сопротивление жидкости
             motionX *= 0.8;
             motionY *= 0.8;
             motionZ *= 0.8;
 
-            // Инициализация таймера поклёвки
             if (!waitingForBite && ticksInWater == 1) {
                 waitingForBite = true;
-                int seconds = ModConfig.getBiteTimeByTier(rodTier); // напрямую по tier 0..6
-                timeUntilBite = Math.max(1, seconds) * 20; // секунды → тики
+                int seconds = ModConfig.getBiteTimeByTier(rodTier);
+                timeUntilBite = Math.max(1, seconds) * 20;
             }
 
-            // Проверка на поклёвку
             if (waitingForBite && ticksInWater >= timeUntilBite && !fishBiting) {
                 fishBiting = true;
                 fishTier = FishTierSystem.getRandomFishTier();
 
+
                 if (owner instanceof EntityPlayerMP) {
                     boolean isLavaEnv = inLava || worldObj.provider.isHellWorld;
                     NetworkHandler.INSTANCE.sendTo(
-                            new PacketShowBiteAnimation(rodTier, isLavaEnv, fishTier, getEntityId()),
+                            new PacketOpenFishingGUI(rodTier, isLavaEnv, fishTier, getEntityId()),
                             (EntityPlayerMP) owner
                     );
                 }
+
+
 
                 worldObj.playSoundAtEntity(this, "random.splash", 0.25F,
                         1.0F + (rand.nextFloat() - rand.nextFloat()) * 0.4F);
             }
 
         } else {
-            // Вышли из жидкости — сброс состояния
             ticksInWater = 0;
             waitingForBite = false;
         }
@@ -186,8 +191,11 @@ public class EntityCustomBobber extends Entity {
     @Override
     protected void writeEntityToNBT(NBTTagCompound tag) {}
 
+    /** Геттер владельца для рендера лески */
     public EntityPlayer getOwner() { return owner; }
-    public int getRodTier() { return rodTier; } // теперь возвращает сырой tier 0..6
+
+    public int getRodTier() { return rodTier; }
     public int getFishTier() { return fishTier; }
     public boolean isFishBiting() { return fishBiting; }
+
 }

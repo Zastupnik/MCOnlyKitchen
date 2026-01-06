@@ -299,6 +299,8 @@ public class GuiFishingMiniGame extends GuiScreen {
 
     private void onFail() {
         finished = true;
+        // В месте, где ты закрываешь GUI после завершения без сундука:
+        com.mconlykitchen.mconlykitchen.client.ClientEventHandler.applyJumpCooldown(6); // ~0.3 сек на 1.7.10
         fireResult(false, false, false);
         if (mc.thePlayer != null) {
             mc.thePlayer.addChatMessage(new ChatComponentText(I18n.format("gui.fishing.escape")));

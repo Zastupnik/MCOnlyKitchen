@@ -45,6 +45,7 @@ public class MCOnlyKitchen {
 
         // Регистрация предметов
         ModItems.init();
+        ModEntities.init(); // регистрация сущностей
         ModFishingRods.init();
 
         // Инициализация системы тиров

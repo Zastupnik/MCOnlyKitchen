@@ -5,7 +5,6 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
@@ -24,22 +23,22 @@ public class RenderCustomBobber extends Render {
         GL11.glPushMatrix();
         GL11.glTranslated(x, y, z);
 
-        // Рендер поплавка (маленький белый куб)
+        // Рендер поплавка (маленький белый квадратик)
         this.bindEntityTexture(bobber);
-        Tessellator tessellator = Tessellator.instance;
+        Tessellator tess = Tessellator.instance;
 
         float size = 0.0625F; // 1/16 блока
 
         GL11.glRotatef(180.0F - this.renderManager.playerViewY, 0.0F, 1.0F, 0.0F);
         GL11.glRotatef(-this.renderManager.playerViewX, 1.0F, 0.0F, 0.0F);
 
-        tessellator.startDrawingQuads();
-        tessellator.setNormal(0.0F, 1.0F, 0.0F);
-        tessellator.addVertexWithUV(-size, -size, 0.0D, 0.0D, 0.0D);
-        tessellator.addVertexWithUV(-size, size, 0.0D, 0.0F, 1.0F);
-        tessellator.addVertexWithUV(size, size, 0.0D, 1.0F, 1.0F);
-        tessellator.addVertexWithUV(size, -size, 0.0D, 1.0F, 0.0F);
-        tessellator.draw();
+        tess.startDrawingQuads();
+        tess.setNormal(0.0F, 1.0F, 0.0F);
+        tess.addVertexWithUV(-size, -size, 0.0D, 0.0D, 0.0D);
+        tess.addVertexWithUV(-size,  size, 0.0D, 0.0F, 1.0F);
+        tess.addVertexWithUV( size,  size, 0.0D, 1.0F, 1.0F);
+        tess.addVertexWithUV( size, -size, 0.0D, 1.0F, 0.0F);
+        tess.draw();
 
         GL11.glPopMatrix();
 
@@ -51,49 +50,47 @@ public class RenderCustomBobber extends Render {
     }
 
     /**
-     * Рендер лески от руки игрока до поплавка
+     * Леска от руки игрока до поплавка
      */
-    private void renderFishingLine(EntityCustomBobber bobber, EntityPlayer player,
-                                   double x, double y, double z, float partialTicks) {
+    private void renderFishingLine(EntityCustomBobber bobber,
+                                   EntityPlayer player,
+                                   double x, double y, double z,
+                                   float partialTicks) {
+
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         GL11.glDisable(GL11.GL_LIGHTING);
 
-        // Позиция глаза игрока + смещение для руки
-        double playerX = player.prevPosX + (player.posX - player.prevPosX) * partialTicks;
-        double playerY = player.prevPosY + (player.posY - player.prevPosY) * partialTicks + player.getEyeHeight();
-        double playerZ = player.prevPosZ + (player.posZ - player.prevPosZ) * partialTicks;
+        float pitch = player.prevRotationPitch + (player.rotationPitch - player.prevRotationPitch) * partialTicks;
+        float yawp  = player.prevRotationYaw   + (player.rotationYaw   - player.prevRotationYaw) * partialTicks;
 
-        double handOffsetX = -MathHelper.sin(player.renderYawOffset / 180.0F * (float)Math.PI) * 0.35;
-        double handOffsetZ = MathHelper.cos(player.renderYawOffset / 180.0F * (float)Math.PI) * 0.35;
+        double cosYaw   = net.minecraft.util.MathHelper.cos(-yawp * (float)Math.PI / 180F - (float)Math.PI);
+        double sinYaw   = net.minecraft.util.MathHelper.sin(-yawp * (float)Math.PI / 180F - (float)Math.PI);
+        double cosPitch = -net.minecraft.util.MathHelper.cos(-pitch * (float)Math.PI / 180F);
+        double sinPitch = net.minecraft.util.MathHelper.sin(-pitch * (float)Math.PI / 180F);
 
-        playerX += handOffsetX;
-        playerZ += handOffsetZ;
-        playerY -= 0.1; // чуть ниже глаза
+        double handX = player.prevPosX + (player.posX - player.prevPosX) * partialTicks
+                - cosYaw * 0.35D - sinYaw * 0.8D;
+        double handY = player.prevPosY + (player.posY - player.prevPosY) * partialTicks
+                + player.getEyeHeight() - cosPitch * 0.45D;
+        double handZ = player.prevPosZ + (player.posZ - player.prevPosZ) * partialTicks
+                - sinYaw * 0.35D + cosYaw * 0.8D;
 
-        // Позиция поплавка с интерполяцией
-        double bobberX = bobber.prevPosX + (bobber.posX - bobber.prevPosX) * partialTicks;
-        double bobberY = bobber.prevPosY + (bobber.posY - bobber.prevPosY) * partialTicks + 0.25;
-        double bobberZ = bobber.prevPosZ + (bobber.posZ - bobber.prevPosZ) * partialTicks;
+        double bx = bobber.prevPosX + (bobber.posX - bobber.prevPosX) * partialTicks;
+        double by = bobber.prevPosY + (bobber.posY - bobber.prevPosY) * partialTicks + 0.1D;
+        double bz = bobber.prevPosZ + (bobber.posZ - bobber.prevPosZ) * partialTicks;
 
-        // Относительные координаты лески
-        double dx = playerX - bobberX;
-        double dy = playerY - bobberY;
-        double dz = playerZ - bobberZ;
+        Tessellator tess = Tessellator.instance;
+        tess.startDrawing(GL11.GL_LINE_STRIP);
+        tess.setColorOpaque_I(0x202020);
 
-        Tessellator tessellator = Tessellator.instance;
-        tessellator.startDrawing(3); // GL_LINE_STRIP
-        tessellator.setColorOpaque_I(0x000000); // чёрная леска
-
-        int segments = 16;
-        for (int i = 0; i <= segments; i++) {
-            float f = (float)i / (float)segments;
-            double lerpX = dx * f;
-            double lerpY = dy * f - f * (1.0F - f) * 0.5; // провисание
-            double lerpZ = dz * f;
-            tessellator.addVertex(lerpX, lerpY, lerpZ);
+        for (int i = 0; i <= 16; i++) {
+            float t = i / 16.0F;
+            double sx = handX + (bx - handX) * t - this.renderManager.viewerPosX;
+            double sy = handY + (by - handY) * t + Math.sin(t * Math.PI) * 0.05D - this.renderManager.viewerPosY;
+            double sz = handZ + (bz - handZ) * t - this.renderManager.viewerPosZ;
+            tess.addVertex(sx, sy, sz);
         }
-
-        tessellator.draw();
+        tess.draw();
 
         GL11.glEnable(GL11.GL_LIGHTING);
         GL11.glEnable(GL11.GL_TEXTURE_2D);

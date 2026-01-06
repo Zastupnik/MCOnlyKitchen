@@ -42,19 +42,16 @@ public class PacketShowBiteAnimation implements IMessage {
     public static class Handler implements IMessageHandler<PacketShowBiteAnimation, IMessage> {
         @Override
         public IMessage onMessage(final PacketShowBiteAnimation message, MessageContext ctx) {
-            // Клиентская сторона: В 1.7.10 Minecraft.getMinecraft().addScheduledTask нет,
-            // поэтому просто используем FMLInjectionData или запуск через Minecraft.instance
-            Minecraft mc = Minecraft.getMinecraft();
-            if (mc.theWorld != null) {
-                // На клиенте код уже выполняется в основном потоке рендера
-                BiteAnimationHandler.showAnimation(
-                        message.rodTier,
-                        message.isLava,
-                        message.fishTier,
-                        message.bobberEntityId
+            if (ctx.side.isClient()) {
+                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+                mc.displayGuiScreen(null); // или запуск анимации
+                com.mconlykitchen.mconlykitchen.client.BiteAnimationHandler.showAnimation(
+                        message.rodTier, message.isLava, message.fishTier, message.bobberEntityId
                 );
             }
             return null;
         }
     }
+
+
 }

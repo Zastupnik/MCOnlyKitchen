@@ -23,6 +23,8 @@ public class CommonProxy {
         );
     }
 
+    public void init() {}
+
     public void init(FMLInitializationEvent event) {
         // Общая инициализация (пока пусто)
     }
