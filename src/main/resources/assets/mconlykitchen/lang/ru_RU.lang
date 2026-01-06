@@ -1,0 +1,89 @@
+# Creative Tab
+itemGroup.mconlykitchen=MCOnlyKitchen
+
+# Fishing Rods
+item.mconlykitchen.basic_fishing_rod.name=Базовая удочка
+item.mconlykitchen.improved_fishing_rod.name=Улучшенная удочка
+item.mconlykitchen.advanced_fishing_rod.name=Продвинутая удочка
+item.mconlykitchen.nether_basic_fishing_rod.name=Базовая адская удочка
+item.mconlykitchen.nether_improved_fishing_rod.name=Улучшенная адская удочка
+item.mconlykitchen.nether_advanced_fishing_rod.name=Продвинутая адская удочка
+item.mconlykitchen.universal_fishing_rod.name=Универсальная удочка
+
+# Overworld Fish
+item.mconlykitchen.fish_salmon.name=Лосось
+item.mconlykitchen.fish_cod.name=Треска
+item.mconlykitchen.fish_trout.name=Форель
+item.mconlykitchen.fish_bass.name=Окунь
+item.mconlykitchen.fish_perch.name=Ёрш
+item.mconlykitchen.fish_pike.name=Щука
+item.mconlykitchen.fish_carp.name=Карп
+item.mconlykitchen.fish_tuna.name=Тунец
+item.mconlykitchen.fish_mackerel.name=Скумбрия
+item.mconlykitchen.fish_herring.name=Сельдь
+item.mconlykitchen.fish_sardine.name=Сардина
+item.mconlykitchen.fish_anchovy.name=Анчоус
+item.mconlykitchen.fish_catfish.name=Сом
+item.mconlykitchen.fish_sturgeon.name=Осётр
+item.mconlykitchen.fish_tilapia.name=Тилапия
+item.mconlykitchen.fish_flounder.name=Камбала
+item.mconlykitchen.fish_halibut.name=Палтус
+item.mconlykitchen.fish_snapper.name=Луциан
+item.mconlykitchen.fish_grouper.name=Групер
+item.mconlykitchen.fish_barracuda.name=Барракуда
+item.mconlykitchen.fish_swordfish.name=Меч-рыба
+item.mconlykitchen.fish_marlin.name=Марлин
+item.mconlykitchen.fish_shark.name=Акула
+item.mconlykitchen.fish_eel.name=Угорь
+item.mconlykitchen.fish_octopus.name=Осьминог
+item.mconlykitchen.fish_squid.name=Кальмар
+item.mconlykitchen.fish_crab.name=Краб
+item.mconlykitchen.fish_lobster.name=Лобстер
+
+# Nether Fish
+item.mconlykitchen.nether_fish_magma.name=Магматическая рыба
+item.mconlykitchen.nether_fish_soul.name=Душевная рыба
+item.mconlykitchen.nether_fish_infernal.name=Инфернальная рыба
+item.mconlykitchen.nether_fish_blaze.name=Пламенная рыба
+item.mconlykitchen.nether_fish_ember.name=Тлеющая рыба
+item.mconlykitchen.nether_fish_flame.name=Огненная рыба
+item.mconlykitchen.nether_fish_volcanic.name=Вулканическая рыба
+item.mconlykitchen.nether_fish_hellfire.name=Адская рыба
+item.mconlykitchen.nether_fish_crimson.name=Багровая рыба
+item.mconlykitchen.nether_fish_warped.name=Искажённая рыба
+item.mconlykitchen.nether_fish_ghast.name=Призрачная рыба
+item.mconlykitchen.nether_fish_wither.name=Иссушающая рыба
+item.mconlykitchen.nether_fish_obsidian.name=Обсидиановая рыба
+item.mconlykitchen.nether_fish_netherite.name=Незеритовая рыба
+item.mconlykitchen.nether_fish_basalt.name=Базальтовая рыба
+item.mconlykitchen.nether_fish_blackstone.name=Чернокаменная рыба
+item.mconlykitchen.nether_fish_piglin.name=Пиглинская рыба
+item.mconlykitchen.nether_fish_hoglin.name=Хоглинская рыба
+item.mconlykitchen.nether_fish_strider.name=Страйдерская рыба
+item.mconlykitchen.nether_fish_void.name=Пустотная рыба
+
+# Items
+item.mconlykitchen.item_pearl.name=Жемчужина
+item.mconlykitchen.item_shell.name=Ракушка
+item.mconlykitchen.item_coral.name=Коралл
+item.mconlykitchen.item_starfish.name=Морская звезда
+item.mconlykitchen.item_seaweed.name=Водоросли
+item.mconlykitchen.item_amber.name=Янтарь
+
+# GUI Messages
+gui.fishing.success=Вы поймали рыбу!
+gui.fishing.chest=Вы нашли сундук с сокровищами!
+gui.fishing.golden_chest=Вы нашли ЗОЛОТОЙ сундук с сокровищами!
+gui.fishing.escape=Рыба сбежала...
+
+#Tiers
+tier.common=Обычная
+tier.uncommon=Необычная
+tier.rare=Редкая
+tier.epic=Эпическая
+tier.legendary=Легендарная
+tier.unknown=Неизвестная
+#Messages
+message.cooldown=Кулдаун: %s сек.
+message.rod_wrong_dimension=Эта удочка здесь не работает!
+message.inventory_full=Инвентарь полон! Предмет выпал на землю.

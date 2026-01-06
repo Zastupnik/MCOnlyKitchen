@@ -1,0 +1,14 @@
+[{
+  "modid": "mconlykitchen",
+  "name": "MCOnlyKitchen",
+  "description": "Полноценный мод кухни с рыбалкой в стиле Stardew Valley",
+  "version": "1.0.0",
+  "mcversion": "1.7.10",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["Zastupnik"],
+  "credits": "Вдохновлено Stardew Valley",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}]
