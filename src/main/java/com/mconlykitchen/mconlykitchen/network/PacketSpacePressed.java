@@ -13,16 +13,25 @@ public class PacketSpacePressed implements IMessage {
 
     private int bobberEntityId;
 
-    public PacketSpacePressed() {}
-    public PacketSpacePressed(int bobberEntityId) { this.bobberEntityId = bobberEntityId; }
+    public PacketSpacePressed() {
+    }
+
+    public PacketSpacePressed(int bobberEntityId) {
+        this.bobberEntityId = bobberEntityId;
+    }
 
     @Override
-    public void fromBytes(ByteBuf buf) { this.bobberEntityId = buf.readInt(); }
+    public void fromBytes(ByteBuf buf) {
+        this.bobberEntityId = buf.readInt();
+    }
 
     @Override
-    public void toBytes(ByteBuf buf) { buf.writeInt(bobberEntityId); }
+    public void toBytes(ByteBuf buf) {
+        buf.writeInt(bobberEntityId);
+    }
 
     public static class Handler implements IMessageHandler<PacketSpacePressed, IMessage> {
+
         @Override
         public IMessage onMessage(PacketSpacePressed message, MessageContext ctx) {
             final EntityPlayerMP player = ctx.getServerHandler().playerEntity;
@@ -33,23 +42,10 @@ public class PacketSpacePressed implements IMessage {
 
             EntityCustomBobber bobber = (EntityCustomBobber) entity;
 
-            // Запускаем мини-игру
+            // ✅ сервер ТОЛЬКО подтверждает логику
             if (bobber.getState() == EntityCustomBobber.State.BITE_ANIMATION) {
-                bobber.startMiniGame();
 
-                // Помечаем сессию активной
-                FishingSessionManager.startSession(player, bobber);
-
-                // Отправляем пакет на клиент для открытия GUI мини-игры
-                NetworkHandler.INSTANCE.sendTo(
-                        new com.mconlykitchen.mconlykitchen.network.PacketOpenFishingGUI(
-                                bobber.getRodTier(),
-                                player.worldObj.provider.isHellWorld,
-                                bobber.getFishTier(),
-                                bobber.getEntityId()
-                        ),
-                        player
-                );
+                bobber.startMiniGame(); // серверная логика
             }
 
             return null;

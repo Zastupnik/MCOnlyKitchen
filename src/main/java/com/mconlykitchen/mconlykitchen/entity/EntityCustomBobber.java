@@ -17,42 +17,52 @@ import net.minecraft.world.World;
 
 public class EntityCustomBobber extends Entity {
 
-    public enum State {
-        WAITING_FOR_BITE,
+    /* ===================== STATE MACHINE ===================== */
+    public static enum State {
+        FLYING,
+        IN_WATER,
         BITE_ANIMATION,
-        MINI_GAME_STARTED,
+        MINI_GAME,
         FINISHED
     }
 
-    private final EntityPlayer owner;
-    private final int rodTier;
+    private State state = State.FLYING;
+
+    public State getState() { return state; }
+
+    private void setState(State newState) { this.state = newState; }
+
+    public void startMiniGame() {
+        if (state != State.BITE_ANIMATION) return;
+        setState(State.MINI_GAME);
+    }
+
+    /* ===================== FIELDS ===================== */
+    private EntityPlayer owner;
+    private int rodTier;
 
     private boolean inGround;
-    private State state = State.WAITING_FOR_BITE;
-
-    private int biteTimer = -1;
+    private int ticksInWater;
+    private int timeUntilBite;
+    private boolean waitingForBite;
+    private boolean fishBiting;
     private int fishTier;
 
-    // Задержка после мини-игры (чтобы игрок не прыгал)
-    private int postGameDelay = 0;
+    private boolean wasInWaterOnce = false;
 
-    // Для совместимости с FishingSessionManager
-    private boolean dead = false;
-
+    /* ===================== CONSTRUCTORS ===================== */
     public EntityCustomBobber(World world) {
         super(world);
-        this.owner = null;
-        this.rodTier = 0;
-        setSize(0.25F, 0.25F);
+        this.setSize(0.25F, 0.25F);
     }
 
     public EntityCustomBobber(World world, EntityPlayer player, int tier) {
-        super(world);
+        this(world);
         this.owner = player;
         this.rodTier = MathHelper.clamp_int(tier, 0, 6);
-        setSize(0.25F, 0.25F);
+        setState(State.FLYING);
 
-        setLocationAndAngles(
+        this.setLocationAndAngles(
                 player.posX,
                 player.posY + player.getEyeHeight() - 0.1,
                 player.posZ,
@@ -61,44 +71,49 @@ public class EntityCustomBobber extends Entity {
         );
 
         float f = 0.4F;
-        motionX = -MathHelper.sin(rotationYaw * (float)Math.PI / 180F)
-                * MathHelper.cos(rotationPitch * (float)Math.PI / 180F) * f;
-        motionZ =  MathHelper.cos(rotationYaw * (float)Math.PI / 180F)
-                * MathHelper.cos(rotationPitch * (float)Math.PI / 180F) * f;
-        motionY = -MathHelper.sin(rotationPitch * (float)Math.PI / 180F) * f;
+        this.motionX = -MathHelper.sin(rotationYaw / 180.0F * (float)Math.PI)
+                * MathHelper.cos(rotationPitch / 180.0F * (float)Math.PI) * f;
+        this.motionZ = MathHelper.cos(rotationYaw / 180.0F * (float)Math.PI)
+                * MathHelper.cos(rotationPitch / 180.0F * (float)Math.PI) * f;
+        this.motionY = -MathHelper.sin(rotationPitch / 180.0F * (float)Math.PI) * f;
 
-        setHeading(motionX, motionY, motionZ, 1.5F, 1.0F);
+        this.setThrowableHeading(motionX, motionY, motionZ, 1.5F, 1.0F);
     }
 
-    public void setHeading(double x, double y, double z, float velocity, float inaccuracy) {
-        float f = MathHelper.sqrt_double(x*x + y*y + z*z);
+    @Override protected void entityInit() {}
+    public void setThrowableHeading(double x, double y, double z, float velocity, float inaccuracy) {
+        float f = MathHelper.sqrt_double(x * x + y * y + z * z);
         x /= f; y /= f; z /= f;
 
-        x += rand.nextGaussian() * 0.0075 * inaccuracy;
-        y += rand.nextGaussian() * 0.0075 * inaccuracy;
-        z += rand.nextGaussian() * 0.0075 * inaccuracy;
+        x += this.rand.nextGaussian() * 0.0075D * inaccuracy;
+        y += this.rand.nextGaussian() * 0.0075D * inaccuracy;
+        z += this.rand.nextGaussian() * 0.0075D * inaccuracy;
 
         x *= velocity; y *= velocity; z *= velocity;
 
-        motionX = x;
-        motionY = y;
-        motionZ = z;
+        this.motionX = x;
+        this.motionY = y;
+        this.motionZ = z;
     }
 
-    @Override
-    protected void entityInit() {}
-
+    /* ===================== UPDATE ===================== */
     @Override
     public void onUpdate() {
         super.onUpdate();
 
-        if (owner == null || !owner.isEntityAlive()) { setDead(); return; }
-        if (owner.getDistanceSqToEntity(this) > 1024D) { setDead(); return; }
+        if (owner == null || owner.isDead) {
+            setDead();
+            return;
+        }
 
-        if (!inGround) updateMotion();
-        handleBiteLogic();
+        if (owner.getDistanceSqToEntity(this) > 1024.0) {
+            setDead();
+            return;
+        }
 
-        if (postGameDelay > 0) postGameDelay--;
+        if (!inGround && state == State.FLYING) updateMotion();
+
+        checkInLiquid();
     }
 
     private void updateMotion() {
@@ -114,75 +129,76 @@ public class EntityCustomBobber extends Entity {
         int z = MathHelper.floor_double(posZ);
 
         Block block = worldObj.getBlock(x, y, z);
-        AxisAlignedBB aabb = block.getCollisionBoundingBoxFromPool(worldObj, x, y, z);
-
-        if (aabb != null && aabb.isVecInside(Vec3.createVectorHelper(posX, posY, posZ))) {
-            inGround = true;
-            motionX = motionY = motionZ = 0;
+        if (!block.isAir(worldObj, x, y, z)) {
+            AxisAlignedBB aabb = block.getCollisionBoundingBoxFromPool(worldObj, x, y, z);
+            if (aabb != null && aabb.isVecInside(Vec3.createVectorHelper(posX, posY, posZ))) {
+                inGround = true;
+                motionX = motionY = motionZ = 0;
+            }
         }
     }
 
-    private void handleBiteLogic() {
+    /* ===================== WATER / LAVA LOGIC ===================== */
+    private void checkInLiquid() {
         int x = MathHelper.floor_double(posX);
         int y = MathHelper.floor_double(posY);
         int z = MathHelper.floor_double(posZ);
 
-        Material mat = worldObj.getBlock(x, y, z).getMaterial();
-        boolean validLiquid = mat == Material.water || mat == Material.lava;
+        Block block = worldObj.getBlock(x, y, z);
+        Material material = block.getMaterial();
 
-        if (!validLiquid || worldObj.isRemote) return;
+        boolean inWater = material == Material.water;
+        boolean inLava = material == Material.lava;
 
-        switch (state) {
-            case WAITING_FOR_BITE:
-                if (biteTimer < 0) { biteTimer = ModConfig.getBiteTimeByTier(rodTier) * 20; return; }
-                biteTimer--;
-                if (biteTimer <= 0) {
-                    fishTier = FishTierSystem.getRandomFishTier();
-                    state = State.BITE_ANIMATION;
+        if ((inWater || inLava) && !worldObj.isRemote) {
 
-                    if (owner instanceof EntityPlayerMP) {
-                        boolean lava = mat == Material.lava || worldObj.provider.isHellWorld;
-                        NetworkHandler.INSTANCE.sendTo(
-                                new PacketShowBiteAnimation(rodTier, lava, fishTier, getEntityId()),
-                                (EntityPlayerMP) owner
-                        );
-                    }
+            wasInWaterOnce = true;
 
-                    worldObj.playSoundAtEntity(this, "random.splash", 0.25F, 1.0F);
-                    postGameDelay = 10;
-                }
-                break;
+            if (state == State.FLYING) setState(State.IN_WATER);
 
-            case BITE_ANIMATION:
-                // Ждём PacketSpacePressed → startMiniGame()
-                break;
+            ticksInWater++;
+            motionX *= 0.8; motionY *= 0.8; motionZ *= 0.8;
 
-            case MINI_GAME_STARTED:
-                // Здесь можно добавить прогресс-бар таймер
-                break;
+            if (!waitingForBite && ticksInWater == 1) {
+                waitingForBite = true;
+                timeUntilBite = Math.max(1, ModConfig.getBiteTimeByTier(rodTier)) * 20;
+            }
 
-            case FINISHED:
-                setDead();
-                break;
+            if (waitingForBite && ticksInWater >= timeUntilBite && !fishBiting) {
+                triggerBiteAnimation(inLava);
+            }
+
+        } else {
+            ticksInWater = 0;
+            waitingForBite = false;
         }
     }
 
-    public void startMiniGame() {
-        if (state == State.BITE_ANIMATION) {
-            state = State.MINI_GAME_STARTED;
+    /* ===================== BITE ANIMATION TRIGGER ===================== */
+    private void triggerBiteAnimation(boolean inLava) {
+        fishBiting = true;
+        fishTier = FishTierSystem.getRandomFishTier();
+        setState(State.BITE_ANIMATION);
+
+        // отправка клиенту
+        if (owner instanceof EntityPlayerMP) {
+            NetworkHandler.INSTANCE.sendTo(
+                    new PacketShowBiteAnimation(
+                            rodTier,
+                            inLava || worldObj.provider.isHellWorld,
+                            fishTier,
+                            getEntityId()
+                    ),
+                    (EntityPlayerMP) owner
+            );
         }
     }
 
+    /* ===================== FINISH ===================== */
     public void retrieveBobber() {
-        state = State.FINISHED;
-        setDead(); // ← КРИТИЧЕСКИ ВАЖНО
+        setState(State.FINISHED);
+        if (!worldObj.isRemote) setDead();
     }
-
-
-    public boolean isDeadCustom() { return dead || super.isDead; }
-
-    @Override
-    public void setDead() { dead = true; super.setDead(); }
 
     @Override protected void readEntityFromNBT(NBTTagCompound tag) {}
     @Override protected void writeEntityToNBT(NBTTagCompound tag) {}
@@ -190,6 +206,5 @@ public class EntityCustomBobber extends Entity {
     public EntityPlayer getOwner() { return owner; }
     public int getRodTier() { return rodTier; }
     public int getFishTier() { return fishTier; }
-    public State getState() { return state; }
-    public int getPostGameDelay() { return postGameDelay; }
+    public boolean wasInWater() { return wasInWaterOnce; }
 }

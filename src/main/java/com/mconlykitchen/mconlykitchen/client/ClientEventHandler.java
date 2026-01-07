@@ -1,8 +1,10 @@
 package com.mconlykitchen.mconlykitchen.client;
 
+import com.mconlykitchen.mconlykitchen.gui.GuiFishingMiniGame;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
+
 @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
 public class ClientEventHandler {
 
@@ -26,14 +28,30 @@ public class ClientEventHandler {
         if (ticks > jumpCooldownTicks) jumpCooldownTicks = ticks;
     }
 
-    @cpw.mods.fml.common.eventhandler.SubscribeEvent
+    @SubscribeEvent
     public void onClientTick(cpw.mods.fml.common.gameevent.TickEvent.ClientTickEvent event) {
         if (event.phase != cpw.mods.fml.common.gameevent.TickEvent.Phase.END) return;
 
-        final net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+        final Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || mc.thePlayer == null) return;
 
         com.mconlykitchen.mconlykitchen.client.BiteAnimationHandler.tick();
+
+        // --- НАЧАЛО ФИКСА: проверка прыжка для мини-игры ---
+        if (mc.gameSettings.keyBindJump.isPressed()) {
+            if (com.mconlykitchen.mconlykitchen.fishing.FishingSessionManager.hasActiveSession(mc.thePlayer)) {
+                com.mconlykitchen.mconlykitchen.entity.EntityCustomBobber bobber =
+                        com.mconlykitchen.mconlykitchen.fishing.FishingSessionManager.getActiveBobber(mc.thePlayer);
+                if (bobber != null && bobber.getState() == com.mconlykitchen.mconlykitchen.entity.EntityCustomBobber.State.BITE_ANIMATION) {
+                    com.mconlykitchen.mconlykitchen.network.NetworkHandler.INSTANCE.sendToServer(
+                            new com.mconlykitchen.mconlykitchen.network.PacketSpacePressed(bobber.getEntityId())
+                    );
+                    applyJumpCooldown(5); // ❗ НЕ даём прыжку сработать
+                    return; // выходим, чтобы обычный прыжок не сработал
+                }
+            }
+        }
+        // --- КОНЕЦ ФИКСА ---
 
         if (jumpCooldownTicks > 0) {
             net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), false);
@@ -42,14 +60,21 @@ public class ClientEventHandler {
 
         if (openFishingGuiScheduled) {
             openFishingGuiScheduled = false;
-            if (!(mc.currentScreen instanceof com.mconlykitchen.mconlykitchen.gui.GuiFishingMiniGame)) {
-                mc.displayGuiScreen(new com.mconlykitchen.mconlykitchen.gui.GuiFishingMiniGame(
-                        scheduledRodTier, scheduledIsLava, scheduledFishTier, scheduledBobberEntityId
+
+            if (!(mc.currentScreen instanceof GuiFishingMiniGame)) {
+                mc.displayGuiScreen(new GuiFishingMiniGame(
+                        scheduledRodTier,
+                        scheduledIsLava,
+                        scheduledFishTier,
+                        scheduledBobberEntityId
                 ));
             }
-            com.mconlykitchen.mconlykitchen.client.BiteAnimationHandler.reset();
+
+            BiteAnimationHandler.reset();
+            applyJumpCooldown(5);
         }
     }
+
 
 
 

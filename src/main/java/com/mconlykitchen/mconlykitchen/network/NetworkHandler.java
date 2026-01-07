@@ -1,6 +1,7 @@
 package com.mconlykitchen.mconlykitchen.network;
 
 import com.mconlykitchen.mconlykitchen.MCOnlyKitchen;
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import cpw.mods.fml.relauncher.Side;
@@ -13,36 +14,36 @@ public class NetworkHandler {
     private static int packetId = 0;
 
     public static void init() {
-        // Открытие мини‑игры (сервер → клиент)
+        // ================= СЕРВЕРНЫЕ пакеты =================
         INSTANCE.registerMessage(
-                new PacketOpenFishingGUI.Handler(),
-                PacketOpenFishingGUI.class,
-                packetId++,
-                Side.CLIENT
-        );
-
-        // Результат мини‑игры (клиент → сервер)
-        INSTANCE.registerMessage(
-                new PacketFishingResult.Handler(),
+                PacketFishingResult.Handler.class,
                 PacketFishingResult.class,
                 packetId++,
                 Side.SERVER
         );
 
-        // Анимация поклёвки (сервер → клиент)
         INSTANCE.registerMessage(
-                new PacketShowBiteAnimation.Handler(),
-                PacketShowBiteAnimation.class,
-                packetId++,
-                Side.CLIENT
-        );
-
-        // Нажатие пробела (клиент → сервер)
-        INSTANCE.registerMessage(
-                new PacketSpacePressed.Handler(),
+                PacketSpacePressed.Handler.class,
                 PacketSpacePressed.class,
                 packetId++,
                 Side.SERVER
         );
+
+        // ================= КЛИЕНТСКИЕ пакеты =================
+        if (FMLCommonHandler.instance().getSide().isClient()) {
+            INSTANCE.registerMessage(
+                    PacketOpenFishingGUI.Handler.class,
+                    PacketOpenFishingGUI.class,
+                    packetId++,
+                    Side.CLIENT
+            );
+
+            INSTANCE.registerMessage(
+                    PacketShowBiteAnimation.Handler.class,
+                    PacketShowBiteAnimation.class,
+                    packetId++,
+                    Side.CLIENT
+            );
+        }
     }
 }

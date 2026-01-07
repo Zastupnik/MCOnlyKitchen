@@ -5,7 +5,6 @@ import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.client.Minecraft;
 
 public class PacketShowBiteAnimation implements IMessage {
 
@@ -25,10 +24,10 @@ public class PacketShowBiteAnimation implements IMessage {
 
     @Override
     public void fromBytes(ByteBuf buf) {
-        this.rodTier = buf.readInt();
-        this.isLava = buf.readBoolean();
-        this.fishTier = buf.readInt();
-        this.bobberEntityId = buf.readInt();
+        rodTier = buf.readInt();
+        isLava = buf.readBoolean();
+        fishTier = buf.readInt();
+        bobberEntityId = buf.readInt();
     }
 
     @Override
@@ -43,15 +42,15 @@ public class PacketShowBiteAnimation implements IMessage {
         @Override
         public IMessage onMessage(final PacketShowBiteAnimation message, MessageContext ctx) {
             if (ctx.side.isClient()) {
-                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
-                mc.displayGuiScreen(null); // или запуск анимации
-                com.mconlykitchen.mconlykitchen.client.BiteAnimationHandler.showAnimation(
-                        message.rodTier, message.isLava, message.fishTier, message.bobberEntityId
+                // В 1.7.10 можно просто вызвать напрямую
+                BiteAnimationHandler.showAnimation(
+                        message.rodTier,
+                        message.isLava,
+                        message.fishTier,
+                        message.bobberEntityId
                 );
             }
             return null;
         }
     }
-
-
 }

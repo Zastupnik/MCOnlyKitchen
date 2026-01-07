@@ -2,19 +2,21 @@ package com.mconlykitchen.mconlykitchen.fishing;
 
 import com.mconlykitchen.mconlykitchen.entity.EntityCustomBobber;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 
 public class FishingSessionManager {
 
-    private static final Map<EntityPlayer, SessionData> activeSessions = new HashMap<>();
+    private static final Map<UUID, SessionData> activeSessions = new HashMap<>();
 
     private static class SessionData {
-        EntityCustomBobber bobber;
-        long startTime;
+        final EntityCustomBobber bobber;
+        final long startTime;
 
         SessionData(EntityCustomBobber bobber, long startTime) {
             this.bobber = bobber;
@@ -22,54 +24,84 @@ public class FishingSessionManager {
         }
     }
 
+    /* ===================== PUBLIC API ===================== */
+
     public static boolean hasActiveSession(EntityPlayer player) {
-        return activeSessions.containsKey(player);
+        return activeSessions.containsKey(player.getUniqueID());
     }
 
     public static EntityCustomBobber getActiveBobber(EntityPlayer player) {
-        SessionData data = activeSessions.get(player);
+        SessionData data = activeSessions.get(player.getUniqueID());
         if (data == null) return null;
-        if (data.bobber.isDeadCustom()) {
-            endSession(player);
+
+        if (isBobberInvalid(data.bobber)) {
+            forceEndSession(player);
             return null;
         }
+
         return data.bobber;
     }
 
     public static boolean startSession(EntityPlayer player, EntityCustomBobber bobber) {
-        if (hasActiveSession(player)) return false;
-        activeSessions.put(player, new SessionData(bobber, player.worldObj.getTotalWorldTime()));
+        UUID id = player.getUniqueID();
+
+        if (activeSessions.containsKey(id)) {
+            forceEndSession(player);
+        }
+
+        activeSessions.put(id, new SessionData(bobber, player.worldObj.getTotalWorldTime()));
         return true;
     }
 
     public static void endSession(EntityPlayer player) {
-        SessionData data = activeSessions.remove(player);
-        if (data != null && !data.bobber.isDeadCustom()) {
-            data.bobber.retrieveBobber(); // завершает поплавок
+        UUID id = player.getUniqueID();
+        SessionData data = activeSessions.remove(id);
+
+        if (data != null && !isBobberInvalid(data.bobber)) {
+            data.bobber.retrieveBobber();
         }
     }
 
-    // Таймаут сессий (если поплавок завис)
+    /** ЖЁСТКИЙ аварийный сброс (использовать при рассинхроне) */
+    public static void forceEndSession(EntityPlayer player) {
+        UUID id = player.getUniqueID();
+        SessionData data = activeSessions.remove(id);
+
+        if (data != null && data.bobber != null) {
+            data.bobber.retrieveBobber(); // ✔ корректное завершение
+        }
+    }
+
+
+    /* ===================== CLEANUP ===================== */
+
+    /** Чистка зависших сессий */
     public static void removeExpiredSessions() {
-        Iterator<Map.Entry<EntityPlayer, SessionData>> it = activeSessions.entrySet().iterator();
+        Iterator<Map.Entry<UUID, SessionData>> it = activeSessions.entrySet().iterator();
+
         while (it.hasNext()) {
-            Map.Entry<EntityPlayer, SessionData> entry = it.next();
+            Map.Entry<UUID, SessionData> entry = it.next();
             SessionData data = entry.getValue();
-            if (data.bobber.isDeadCustom()) {
+
+            if (isBobberInvalid(data.bobber)) {
                 it.remove();
             }
         }
     }
 
-    // Генерация рыбы
+    private static boolean isBobberInvalid(EntityCustomBobber bobber) {
+        return bobber == null || bobber.isDead || bobber.worldObj == null;
+    }
+
+    /* ===================== LOOT ===================== */
+
     public static ItemStack generateFish(int fishTier) {
-        // сюда ваша логика по fishTier
+        // TODO: твоя логика
         return null;
     }
 
-    // Генерация сундуков
     public static ItemStack[] generateChestContents(boolean golden) {
-        // сюда ваша логика сундука
+        // TODO: твоя логика
         return new ItemStack[0];
     }
 }
