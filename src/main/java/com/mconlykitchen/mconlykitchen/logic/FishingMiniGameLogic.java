@@ -36,6 +36,7 @@ public class FishingMiniGameLogic {
 
     private float progress;
     private int failBuffer;
+    private boolean finishedByChest = false;
 
     private static final float CENTER_BONUS_RADIUS = 4f;
 
@@ -174,28 +175,40 @@ public class FishingMiniGameLogic {
 
     private void updateChest() {
         if (!chestVisible || chestCollected) return;
-        if (chestSpawnGraceTicks > 0) { chestSpawnGraceTicks--; return; }
+        if (chestSpawnGraceTicks > 0) {
+            chestSpawnGraceTicks--;
+            return;
+        }
 
         if (isBobberOnChest()) {
             float speed;
             switch (rodTier) {
                 case 6:  speed = 5.0f; break;
-                case 2: case 5: speed = 3.5f; break;
-                case 1: case 4: speed = 2.8f; break;
-                case 0: case 3: default: speed = 2.2f; break;
+                case 2:
+                case 5:  speed = 3.5f; break;
+                case 1:
+                case 4:  speed = 2.8f; break;
+                case 0:
+                case 3:
+                default: speed = 2.2f; break;
             }
+
             chestProgress += speed;
 
             if (chestProgress >= 100f) {
                 chestProgress = 100f;
                 chestCollected = true;
                 chestVisible = false;
-                // ВНИМАНИЕ: тут нет отправки пакета. GUI сам решит, что делать.
+                finishedByChest = true;
             }
         }
     }
 
+
     private void updateProgress() {
+
+        if (finishedByChest) return;
+
         boolean overlap = isOverlap();
 
         if (overlap) {
@@ -215,6 +228,7 @@ public class FishingMiniGameLogic {
             progress += baseGain * (1.0f + 0.3f * tightness) + rodBonus;
 
             if (failBuffer > 0) failBuffer--;
+
         } else {
             float baseLoss = 0.9f * Math.max(0.6f, difficultyMultiplier);
             float rodEaseLoss =
@@ -228,6 +242,7 @@ public class FishingMiniGameLogic {
 
         progress = clamp(progress, 0f, 100f);
     }
+
 
     private void clampBar() {
         if (barY < top) {
@@ -292,4 +307,8 @@ public class FishingMiniGameLogic {
     public boolean isSuccess() { return progress >= 100f; }
 
     public int getFishTier() { return fishTier; }
+
+    public boolean isFinishedByChest() {
+        return finishedByChest;
+    }
 }

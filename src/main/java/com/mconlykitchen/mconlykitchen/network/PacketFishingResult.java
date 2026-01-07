@@ -1,22 +1,19 @@
 package com.mconlykitchen.mconlykitchen.network;
 
+import com.mconlykitchen.mconlykitchen.entity.EntityCustomBobber;
+import com.mconlykitchen.mconlykitchen.fishing.FishingSessionManager;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 
-/**
- * Пакет результата рыбалки: клиент → сервер
- * Используется вместе с FishingSessionManager для защиты от читеров
- */
 public class PacketFishingResult implements IMessage {
 
-    private boolean success;
-    private boolean gotChest;
-    private boolean isGoldenChest;
+    private boolean success, gotChest, isGoldenChest;
 
     public PacketFishingResult() {}
 
@@ -28,9 +25,9 @@ public class PacketFishingResult implements IMessage {
 
     @Override
     public void fromBytes(ByteBuf buf) {
-        this.success = buf.readBoolean();
-        this.gotChest = buf.readBoolean();
-        this.isGoldenChest = buf.readBoolean();
+        success = buf.readBoolean();
+        gotChest = buf.readBoolean();
+        isGoldenChest = buf.readBoolean();
     }
 
     @Override
@@ -41,31 +38,43 @@ public class PacketFishingResult implements IMessage {
     }
 
     public static class Handler implements IMessageHandler<PacketFishingResult, IMessage> {
+
         @Override
         public IMessage onMessage(PacketFishingResult message, MessageContext ctx) {
             EntityPlayerMP player = ctx.getServerHandler().playerEntity;
+            if (player == null || player.isDead) return null;
 
-            if (player == null || player.isDead) {
+            EntityCustomBobber bobber = FishingSessionManager.getActiveBobber(player);
+            if (bobber == null) {
+                player.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Ошибка рыбалки. Попробуйте снова."));
                 return null;
             }
 
-            boolean success = com.mconlykitchen.mconlykitchen.fishing.FishingSessionManager
-                    .finishSession(player, message.success, message.gotChest, message.isGoldenChest);
+            // Ловим сундук
+            if (message.gotChest) {
+                player.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD +
+                        (message.isGoldenChest ? "Вы поймали ЗОЛОТОЙ сундук!" : "Вы поймали сундук!")));
 
-            if (!success) {
-                player.addChatMessage(new ChatComponentText(
-                        EnumChatFormatting.RED + "Ошибка рыбалки. Попробуйте снова."
-                ));
-            } else if (message.gotChest) {
-                // Доп. сообщение при сундуке
-                player.addChatMessage(new ChatComponentText(
-                        EnumChatFormatting.GOLD + (message.isGoldenChest ? "Вы поймали ЗОЛОТОЙ сундук!" : "Вы поймали сундук!")
-                ));
-                // при желании: отправить клиенту пакет для GUI анимации сундука
+                ItemStack[] drops = FishingSessionManager.generateChestContents(message.isGoldenChest);
+                for (ItemStack drop : drops) {
+                    if (!player.inventory.addItemStackToInventory(drop)) {
+                        player.dropPlayerItemWithRandomChoice(drop, false);
+                    }
+                }
             }
+
+            // Ловим обычную рыбу
+            if (message.success) {
+                ItemStack fish = FishingSessionManager.generateFish(bobber.getFishTier());
+                if (!player.inventory.addItemStackToInventory(fish)) {
+                    player.dropPlayerItemWithRandomChoice(fish, false);
+                }
+            }
+
+            // Завершаем сессию после выдачи всех предметов
+            FishingSessionManager.endSession(player);
 
             return null;
         }
     }
-
 }

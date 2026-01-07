@@ -131,29 +131,20 @@ public class GuiFishingMiniGame extends GuiScreen {
             return;
         }
 
-        // Только после того как рыба доловилась
-        if (logic.isSuccess() && !finished) {
-            boolean chestReady = logic.hasChestReward();   // сундук действительно собран
-            boolean golden = logic.isGoldenChest();
+        if (!finished && logic.isFinishedByChest()) {
+            finished = true;
+            fireResult(true, true, logic.isGoldenChest());
+            mc.displayGuiScreen(null);
+            return;
+        }
 
-            if (chestReady && ModConfig.enableChestAnimation) {
-                NBTTagCompound tag = mc.thePlayer.getEntityData().getCompoundTag("LastChestLoot");
-                ItemStack rewardItem = ItemStack.loadItemStackFromNBT(tag);
-
-
-
-                // Отправляем результат на сервер: "пойман сундук"
-                fireResult(true, true, golden);
-
-                finished = true;
-                return;
-            }
-
-            // Если сундук не собран — обычный финиш рыбы
-            showPerfect = !chestReady;
-            onSuccess(chestReady, golden);
+        if (!finished && logic.isSuccess()) {
+            finished = true;
+            fireResult(true, false, false);
+            mc.displayGuiScreen(null);
         }
     }
+
 
     private void drawChest(int guiX, int guiY) {
         int chestY = guiY + CHANNEL_Y + logic.getChestY();

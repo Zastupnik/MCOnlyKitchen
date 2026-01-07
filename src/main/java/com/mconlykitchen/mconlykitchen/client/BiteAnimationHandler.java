@@ -11,6 +11,7 @@ import net.minecraft.client.gui.ScaledResolution;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.settings.KeyBinding;
 
 @SideOnly(Side.CLIENT)
 public class BiteAnimationHandler {
@@ -19,104 +20,107 @@ public class BiteAnimationHandler {
             new ResourceLocation("mconlykitchen", "textures/gui/space_button.png");
 
     private static boolean isAnimating = false;
+    private static boolean waitingForPress = false;
+    private static boolean spacePressed = false;
+
     private static int animationTick = 0;
+    private static int waitTicks = 0;
 
     private static int rodTier;
     private static boolean isLava;
     private static int fishTier;
     private static int bobberEntityId;
 
-    private static int biteTimeTicks = 60; // тики поклёвки
-
-    private static boolean waitingForPress = false; // ждём пробел для старта мини-игры
-    private static boolean spacePressed = false;    // зафиксирован пробел
-    private static int waitTicks = 0;
-    private static final int WAIT_DURATION = 100;   // 5 секунд на пробел
+    private static int biteTimeTicks = 60;
+    private static final int WAIT_DURATION = 100;
 
     private static final int ANIM_WIDTH = 128;
     private static final int ANIM_HEIGHT = 32;
-    private static final int FRAME_TIME = 5;        // 5 тиков на кадр
+    private static final int FRAME_TIME = 5;
     private static final int MAX_FRAMES = 4;
 
-    /** Запуск анимации поклёвки */
+    /** Запуск анимации */
     public static void showAnimation(int tier, boolean lava, int fish, int entityId) {
-        // Сырой tier 0..6
-        rodTier = tier < 0 ? 0 : (tier > 6 ? 6 : tier);
+        rodTier = Math.max(0, Math.min(6, tier));
         isLava = lava;
         fishTier = fish;
         bobberEntityId = entityId;
 
-        // Всегда берём из конфига (секунды → тики)
-        int biteSeconds = ModConfig.getBiteTimeByTier(rodTier);
-        biteTimeTicks = Math.max(1, biteSeconds) * 20;
+        biteTimeTicks = Math.max(1, ModConfig.getBiteTimeByTier(rodTier)) * 20;
 
         isAnimating = true;
-        animationTick = 0;
         waitingForPress = false;
         spacePressed = false;
+        animationTick = 0;
         waitTicks = 0;
     }
 
-    /** Тик анимации, вызывается из ClientTickHandler */
+    /** Тик клиента */
     public static void tick() {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null) return;
 
-        // Если мини-игра уже открыта — полностью сбрасываем анимацию
+        // Если GUI уже открыт — полностью выходим
         if (mc.currentScreen instanceof GuiFishingMiniGame) {
-            isAnimating = false;
-            waitingForPress = false;
-            spacePressed = false;
-            animationTick = 0;
-            waitTicks = 0;
+            reset();
             return;
         }
 
-        // Блокировка движения игрока
         if (isAnimating || waitingForPress) {
-            mc.thePlayer.motionX = 0;
-            mc.thePlayer.motionZ = 0;
-            mc.thePlayer.motionY = 0;
-            mc.thePlayer.jumpMovementFactor = 0;
+            KeyBinding.setKeyBindState(
+                    mc.gameSettings.keyBindJump.getKeyCode(),
+                    false
+            );
         }
 
-        // Анимация поклёвки
+
+        // Фаза анимации поклёвки
         if (isAnimating) {
             animationTick++;
-
-            // Время поклёвки истекло — переключаемся в режим ожидания пробела
             if (animationTick >= biteTimeTicks) {
                 isAnimating = false;
                 waitingForPress = true;
                 waitTicks = 0;
             }
+            return;
         }
 
-        // Таймер ожидания пробела
-// Пробел запускает мини-игру ТОЛЬКО в фазе ожидания
-        if (waitingForPress && !spacePressed && Keyboard.isKeyDown(Keyboard.KEY_SPACE)) {
-            spacePressed = true;
+        // Фаза ожидания пробела
+        if (waitingForPress) {
+            waitTicks++;
 
-            // Отправляем серверу
-            NetworkHandler.INSTANCE.sendToServer(new PacketSpacePressed(bobberEntityId));
+// SPACE может сработать И во время анимации, И во время ожидания
+            if ((isAnimating || waitingForPress) && !spacePressed && Keyboard.isKeyDown(Keyboard.KEY_SPACE)) {
 
-            // Открываем GUI мини-игры
-            com.mconlykitchen.mconlykitchen.client.ClientEventHandler.scheduleOpenFishingGui(
-                    rodTier, isLava, fishTier, bobberEntityId
-            );
-            reset();
+                spacePressed = true;
+
+                // Гасим прыжок ЖЁСТКО
+                KeyBinding.setKeyBindState(
+                        mc.gameSettings.keyBindJump.getKeyCode(),
+                        false
+                );
+
+                NetworkHandler.INSTANCE.sendToServer(
+                        new PacketSpacePressed(bobberEntityId)
+                );
+
+                ClientEventHandler.scheduleOpenFishingGui(
+                        rodTier, isLava, fishTier, bobberEntityId
+                );
+
+                reset();
+                return;
+            }
 
 
-            // Полный сброс анимации
-            isAnimating = false;
-            waitingForPress = false;
-            animationTick = 0;
-            waitTicks = 0;
+            // Таймаут — отмена
+            if (waitTicks > WAIT_DURATION) {
+                reset();
+            }
         }
-
     }
 
-    /** Рендер иконки SPACE */
+    /** Рендер (ТОЛЬКО ОТРИСОВКА!) */
     public static void render(ScaledResolution resolution) {
         if (!isAnimating && !waitingForPress) return;
 
@@ -127,43 +131,21 @@ public class BiteAnimationHandler {
         int y = (resolution.getScaledHeight() - ANIM_HEIGHT) / 2;
 
         GL11.glPushMatrix();
-        GL11.glColor4f(1f, 1f, 1f, 1f);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glColor4f(1f, 1f, 1f, 1f);
 
         mc.getTextureManager().bindTexture(SPACE_ANIMATION);
-        // Текстура 4 кадра по 128x32 = 512x32
-        net.minecraft.client.gui.Gui.func_146110_a(x, y, frame * ANIM_WIDTH, 0, ANIM_WIDTH, ANIM_HEIGHT, 512, 32);
+        net.minecraft.client.gui.Gui.func_146110_a(
+                x, y, frame * ANIM_WIDTH, 0,
+                ANIM_WIDTH, ANIM_HEIGHT,
+                512, 32
+        );
 
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glPopMatrix();
-
-        // Пробел запускает мини-игру как во время анимации, так и в фазе ожидания
-        if (!spacePressed && Keyboard.isKeyDown(Keyboard.KEY_SPACE)) {
-            spacePressed = true;
-
-            // Отправляем серверу
-            NetworkHandler.INSTANCE.sendToServer(new PacketSpacePressed(bobberEntityId));
-
-            // Открываем GUI мини-игры
-            com.mconlykitchen.mconlykitchen.client.ClientEventHandler.scheduleOpenFishingGui(
-                    rodTier, isLava, fishTier, bobberEntityId
-            );
-            reset();
-
-
-            // Полный сброс анимации
-            isAnimating = false;
-            waitingForPress = false;
-            animationTick = 0;
-            waitTicks = 0;
-        }
-
-        // ESC закрывает анимацию ожидания (не трогаем уже открытую мини-игру)
-        if (waitingForPress && Keyboard.isKeyDown(Keyboard.KEY_ESCAPE)) {
-            waitingForPress = false;
-        }
     }
+
     public static void reset() {
         isAnimating = false;
         waitingForPress = false;
@@ -172,8 +154,8 @@ public class BiteAnimationHandler {
         waitTicks = 0;
     }
 
-    /** Проверка, активна ли анимация */
     public static boolean isAnimating() {
         return isAnimating || waitingForPress;
     }
 }
+
